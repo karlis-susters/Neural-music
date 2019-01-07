@@ -35,7 +35,6 @@ for f in files:
 			currTime = int(list[1]) / divide
 			list[1] = " " + str(round(currTime))
 			outfile.write(",".join(list))
-		#--------------
 	outfile.close()
 		#GET ALL TEMPOS
 	with open("{}_1st.csv".format(infile), "r") as inoutfile:
@@ -50,22 +49,18 @@ for f in files:
 
 				if (tempo < 310000):
 					#coefficient = 0.5
-					print(0.5)
 					tempos.append([int(list[1]), 0.5])
 					tempoStarts.append(currTime)
 				elif (tempo < 625000):
-					print(1)
 					#coefficient = 1
 					tempos.append([int(list[1]), 1])
 					tempoStarts.append(currTime)
 				elif (tempo < 875000):
-					print(1.5)
 					#coefficient = 1.5
 					tempos.append([int(list[1]), 1.5])
 					tempoStarts.append(currTime)
 				else:
 					#coefficient = 2
-					print(2)
 					tempos.append([int(list[1]), 2])
 					tempoStarts.append(currTime)
 				list[3] = " 500000\n"
