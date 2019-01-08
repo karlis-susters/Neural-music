@@ -1,5 +1,4 @@
 import numpy as np
-#import os
 import tensorflow as tf
 from datetime import datetime
 from tensorflow.python.ops import rnn, rnn_cell
@@ -7,11 +6,10 @@ from tensorflow.contrib import rnn
 from tensorflow.examples.tutorials.mnist import input_data
 from create_featuresets import *
 from math import log
-#os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-#TODO SPEEDUPS
+
 
 now = datetime.now()
-logdir = "C:\\Users\\Karlis_\\Desktop\\ZPD_Materials\\BachReplicator(ZPD)\\tf_logs\\music\\" + now.strftime("%Y%m%d-%H%M%S") + "\\"
+logdir = "C:\\MIDI_Gen\\tf_logs\\" + now.strftime("%Y%m%d-%H%M%S") + "\\"
 print("logging to", logdir)
 
 hm_epochs = 10
@@ -43,46 +41,30 @@ def recurrent_neural_network(x):
 		[tf.nn.rnn_cell.LSTMStateTuple(split_by_layers[i][0], split_by_layers[i][1]) for i in range(layers)])
 
 	lstm_cell = tf.contrib.cudnn_rnn.CudnnCompatibleLSTMCell(rnn_size)
-	#lstm_cell = tf.nn.rnn_cell.DropoutWrapper(lstm_cell, 0.8)
 	lstm_cell2 = tf.contrib.cudnn_rnn.CudnnCompatibleLSTMCell(rnn_size2)
-	#lstm_cell2 = tf.nn.rnn_cell.DropoutWrapper(lstm_cell2, 0.8)
 	lstm_cell3 = tf.contrib.cudnn_rnn.CudnnCompatibleLSTMCell(rnn_size3)
-	#lstm_cell3 = tf.nn.rnn_cell.DropoutWrapper(lstm_cell3, 0.8)
 
 	multi_cell = rnn_cell.MultiRNNCell([lstm_cell, lstm_cell2, lstm_cell3], state_is_tuple=True)
-	print(multi_cell.state_size)
-	print(rnn_tuple_state)
-	print(init_state)
-	#init_state.set_shape([num_batches, rnn_size])
 	outputs, states = tf.nn.dynamic_rnn(multi_cell, x, dtype=tf.float32, initial_state = rnn_tuple_state)
 	outputs = tf.transpose(outputs, [1, 0, 2])
-	print("Last LSTM output shape:")
-	print(outputs.get_shape())
-	#output = np.array([])
 	output = []
 	for i in range(time_steps):
 		output.append(tf.add(tf.matmul(outputs[i], layer['weights']), layer['biases']))
-	print("Final layer output shape:")
 	output_tensor = tf.convert_to_tensor(output, dtype = tf.float32)
-	print(output_tensor.get_shape())
 	output_tensor = tf.transpose(output_tensor, [1, 0, 2])
-	print(output_tensor.get_shape())
 	return output_tensor, states
 
 
 def train_neural_network(x):
 
 	train_x, train_y, test_x, test_y = read_pickle()
-	#test_x = test_x[:time_steps*num_batches]
-	#test_y = test_y[:time_steps*num_batches]
 
 	batch_size = len(train_x) // num_batches
 	time_fragments_in_batch = batch_size // time_steps
 
 	prediction, state = recurrent_neural_network(x)
 	prediction = tf.reshape(prediction, [time_steps*num_batches, n_classes])
-	print("Shape after reshaping")
-	print(prediction.get_shape())
+
 	cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(logits=prediction, labels=y))
 	optimizer = tf.train.AdamOptimizer().minimize(cost) 
 	saver = tf.train.Saver()
@@ -95,11 +77,11 @@ def train_neural_network(x):
 		test_x = sess.run(tf.reshape(test_x, [num_batches, time_steps]))
 		
 		try:
-			saver.restore(sess, 'C:\\Users\\Karlis_\\Desktop\\ZPD_materials\\BachReplicator(ZPD)\\')
+			saver.restore(sess, 'C:\\MIDI_Gen)\\')
 			print("Loading model...")
 		except:
 			print("Creating new model...")
-			saver.save(sess, 'C:\\Users\\Karlis_\\Desktop\\ZPD_materials\\BachReplicator(ZPD)\\')
+			saver.save(sess, 'C:\\MIDI_Gen\\')
 		
 		summary_writer = tf.summary.FileWriter(logdir, graph=sess.graph) #!!!
 
@@ -109,8 +91,6 @@ def train_neural_network(x):
 		acc_summary = tf.summary.scalar("accuracy", accuracy)
 		cost_summary = tf.summary.scalar("cost", cost)
 
-
-		#merged_summaries = tf.summary.merge([acc_summary, cost_summary])
 		j = 0
 		
 		test_x_1hot = sess.run(tf.one_hot(test_x, chunk_size))
@@ -127,11 +107,8 @@ def train_neural_network(x):
 					for k in range(num_batches):
 						x_here.append(train_x[i*time_steps + k*batch_size : (i+1)*time_steps + k*batch_size])
 						y_here.extend(train_y[i*time_steps + k*batch_size : (i+1)*time_steps + k*batch_size])
-						#print(i*time_steps + k*batch_size)
-						#print((i+1)*time_steps + k*batch_size)
+
 					x_here_1hot, y_here_1hot = sess.run([tf.one_hot(x_here, chunk_size), tf.one_hot(y_here, chunk_size)])
-					#x_here_1hot = np.zeros((num_batches, time_steps, n_classes)) #Get onehot of x data
-					#x_here_1hot[np.arange(num_batches), np.arange(time_steps), np.reshape(x_here, (num_batches*time_steps))] = 1
 					_, c, _current_state, cost_summary_str = sess.run([optimizer, cost, state, cost_summary], feed_dict={x: x_here_1hot, y: y_here_1hot, init_state: _current_state})
 					summary_writer.add_summary(cost_summary_str, j)
 					epoch_loss += c
@@ -147,9 +124,7 @@ def train_neural_network(x):
 						summary_writer.add_summary(acc_summary_str, j)
 
 					if i % save_fragments == 0:
-						saver.save(sess, 'C:\\Users\\Karlis_\\Desktop\\ZPD_materials\\BachReplicator(ZPD)\\')
-					
-						# GENERATE SAMPLE
+						saver.save(sess, 'C:\\MIDI_Gen\\')
 					j += 1
 					
 
@@ -178,7 +153,7 @@ def generate_text(length, seed, n):
 	res = ""
 	with tf.Session() as sess:
 		sess.run(tf.global_variables_initializer())
-		saver.restore(sess, 'C:\\Users\\Karlis_\\Desktop\\ZPD_materials\\BachReplicator(ZPD)\\')
+		saver.restore(sess, 'C:\\MIDI_Gen\\')
 		start_x = [sess.run(tf.one_hot(adjust_seq(start[:-1]), n_classes))]
 		_, start_state = sess.run([prediction, state_tens], feed_dict={x:np.array(start_x), init_state:np.zeros((layers, 2, 1, rnn_size))})
 		sequences = [[start, 1.0, [start_state[0][0][0], start_state[0][1][0], start_state[1][0][0], start_state[1][1][0], start_state[2][0][0], start_state[2][1][0]]]]
@@ -188,12 +163,7 @@ def generate_text(length, seed, n):
 			test_x = []
 			test_states = []
 			for j in range(len(sequences)): #expand each sequence
-				#seq, score, seq_state = sequences[j]
-	 			#test_x.append(get_onehot(seq))
-				#test_x.append([sess.run(tf.one_hot(sequences[j][0][-1], n_classes))]) #DONT USE SESS.RUN OFTEN, IT'S SLOW AS FUCK
 				test_x.append(sequences[j][0][-1])
-				#test_states.append(sequences[j][2])
-				
 			
 			feed_x = np.zeros((len(test_x), 1, n_classes)) #Get one hot of x data
 			feed_x[np.arange(len(test_x)), 0, test_x] = 1
@@ -224,12 +194,8 @@ def generate_text(length, seed, n):
 			sequences = ordered[:n]
 			print(sequences[0][1])
 			print(sequences[0][0][-1])
-			#sequences[0][1] = 1.0;
 		print(sequences[0][0])
 		return sequences
-			#for i in sequences[j][0]:
-				#print()
-				#ret += idx_to_char[i]
 
 def create_music(length, outfile):
 	seed = ""
@@ -238,7 +204,6 @@ def create_music(length, outfile):
 			seed = seed + line
 	with open(outfile, "w") as f:
 		data = generate_text(length, seed, 5)
-		#for i in data:
 		str = ""
 		for c in data[0][0]:
 			if (c == 67):
@@ -249,7 +214,6 @@ def create_music(length, outfile):
 				str += chr(c+27)
 		f.write(str)
 
-#read_training_data(n_classes, num_batches*time_steps)
+#read_training_data(n_classes, num_batches*time_steps) #When training, uncomment next two lines
 #train_neural_network(x)
-create_music(500, "music_NN.csv")
-#print(get_onehot([0, 2]))
+create_music(500, "music_NN.csv") #When generating, set time_steps = 1
